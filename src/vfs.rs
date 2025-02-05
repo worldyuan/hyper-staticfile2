@@ -6,7 +6,7 @@
 /// FileOpener ： 提供打开`path`文件的future接口，返回文件元信息（针对文件和文件夹）
 /// 实现类：
 /// TokioFileFuture：包装一个Future，返回`FileWithMetadata`
-/// 
+///
 /// TokioFileOpener: 实现FileOpener，返回`FileWithMetadata<File>`(`TokioFuture`)
 ///     它主要支持打开一个`root`目录，使用根目录`root`和`path`相结合
 /// TokioFileAccess：实现FileAccess.包装tokio::fs，返回文件元信息（TokioFuture）
@@ -23,6 +23,7 @@ use std::{future::Future, time::SystemTime};
 
 use futures_util::future::{ready, Ready};
 use hyper::body::Bytes;
+use include_dir::DirEntry;
 use tokio::fs::{self, File};
 use tokio::io::{AsyncRead, AsyncSeek, ReadBuf};
 use tokio::task::{spawn_blocking, JoinHandle};
@@ -219,6 +220,12 @@ pub struct MemoryFs {
     files: MemoryFileMap,
 }
 
+impl Into<MemoryFs> for &'static include_dir::Dir<'static> {
+    fn into(self) -> MemoryFs {
+        MemoryFs::from_include_dir(self).unwrap()
+    }
+}
+
 impl Default for MemoryFs {
     fn default() -> Self {
         let mut files = MemoryFileMap::new();
@@ -252,6 +259,27 @@ impl MemoryFs {
                 } else if metadata.is_file() {
                     let data = fs::read(entry.path()).await?;
                     fs.add(out_path, data.into(), metadata.modified().ok());
+                }
+            }
+        }
+        Ok(fs)
+    }
+
+    pub fn from_include_dir(dir: &'static include_dir::Dir) -> Result<Self, Error> {
+        let mut fs = Self::default();
+        let mut dirs = vec![dir];
+        while let Some(dir) = dirs.pop() {
+            for entry in dir.entries() {
+                match entry {
+                    DirEntry::Dir(d) => dirs.push(d),
+                    DirEntry::File(file) => {
+                        let data = file.contents();
+                        fs.add(
+                            file.path(),
+                            Bytes::from_static(data),
+                            Some(SystemTime::now()),
+                        );
+                    }
                 }
             }
         }
@@ -303,6 +331,7 @@ impl MemoryFs {
     }
 }
 
+/// 实现内存文件的打开文件
 impl FileOpener for MemoryFs {
     type File = Cursor<Bytes>;
     type Future = Ready<Result<FileWithMetadata<Self::File>, Error>>;

@@ -1,10 +1,11 @@
 use std::future::Future;
-use std::{io::Error as IoError, pin::Pin};
 use std::path::PathBuf;
+use std::{io::Error as IoError, pin::Pin};
 
 use http::{Request, Response};
 use hyper::service::Service;
 
+use crate::vfs::MemoryFs;
 use crate::{
     vfs::{FileOpener, IntoFileAccess, TokioFileOpener},
     AcceptEncoding, Body, Resolver, ResponseBuilder,
@@ -19,6 +20,15 @@ impl Static<TokioFileOpener> {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self {
             resolver: Resolver::new(root),
+            cache_headers: None,
+        }
+    }
+}
+
+impl Static<MemoryFs> {
+    pub fn from_memory_fs(fs: impl Into<MemoryFs>) -> Self {
+        Self {
+            resolver: Resolver::from_memory_fs(fs),
             cache_headers: None,
         }
     }

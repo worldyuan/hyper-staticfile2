@@ -13,6 +13,7 @@ mime_guess = "2"
 tokio = { version = "1", features = ["fs"] }
 percent-encoding = "2"
 rand = "0.9"
+include_dir = "0.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = [
@@ -21,5 +22,5 @@ tokio = { version = "1", features = [
     "net",
     "io-util",
 ] }
-hyper = {version = "1", features = ["http1","http2", "server"]}
-hyper-util = {version = "0.1", features = ["tokio"]}
+hyper = { version = "1", features = ["http1", "http2", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }

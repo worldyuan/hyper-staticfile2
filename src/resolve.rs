@@ -11,7 +11,7 @@ use std::io::Result as IoResult;
 use tokio::fs::File;
 
 use crate::util::RequestedPath;
-use crate::vfs::FileOpener;
+use crate::vfs::{FileOpener, MemoryFs};
 use crate::vfs::{FileWithMetadata, TokioFileOpener};
 
 /// 文件解析结果
@@ -87,6 +87,13 @@ impl Resolver<TokioFileOpener> {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self::with_opener(TokioFileOpener::new(root))
     }
+
+}
+
+impl Resolver<MemoryFs> {
+    pub fn from_memory_fs(fs: impl Into<MemoryFs>) -> Self {
+        Self::with_opener(fs.into())
+    }
 }
 
 impl<O: FileOpener> Resolver<O> {
@@ -150,6 +157,7 @@ impl<O: FileOpener> Resolver<O> {
             }
             params
         };
+        // 打开文件
         let file = match self.opener.open(&path).await {
             Ok(pair) => pair,
             Err(err) => return map_open_err(err),
